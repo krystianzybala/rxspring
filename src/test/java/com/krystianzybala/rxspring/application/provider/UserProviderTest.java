@@ -3,6 +3,8 @@ package com.krystianzybala.rxspring.application.provider;
 import com.krystianzybala.rxspring.application.dto.User;
 import org.junit.Before;
 import org.junit.Test;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.test.scheduler.VirtualTimeScheduler;
 
@@ -26,7 +28,7 @@ public class UserProviderTest {
         final VirtualTimeScheduler virtualTimeScheduler = VirtualTimeScheduler.create();
 
         final StepVerifier.Step<User> step = StepVerifier
-                .withVirtualTime(() -> this.userProvider.getUserByName("Joe"), () -> virtualTimeScheduler, 1)
+                .withVirtualTime(() -> this.userProvider.loadUserByName("Joe"), () -> virtualTimeScheduler, 1)
                 .expectSubscription();
 
 
@@ -47,7 +49,7 @@ public class UserProviderTest {
 
         // setup
         final StepVerifier.Step<User> step = StepVerifier
-                .withVirtualTime(() -> this.userProvider.getUserByName("Joe"))
+                .withVirtualTime(() -> this.userProvider.loadUserByName("Joe"))
                 .expectSubscription();
 
         // no events occurs
@@ -64,4 +66,29 @@ public class UserProviderTest {
                 .verifyComplete();
     }
 
+
+    @Test
+    public void testSumOccursNamesWithLengthLessThanFourChars() {
+
+        // setup
+        final Flux<User> users = this.userProvider.getUsers();
+
+
+        // when
+
+        final Mono<Long> count = users
+                .filter(user -> user.getName().length() <= 3)
+                .count()
+                .switchIfEmpty(Mono.just((0L))); // simple fallback - don't do this.
+
+
+        // then
+
+        StepVerifier
+                .create(count)
+                .expectSubscription()
+                .expectNext(3L)
+                .verifyComplete();
+
+    }
 }
